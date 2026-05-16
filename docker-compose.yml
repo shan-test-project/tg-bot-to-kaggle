@@ -8,10 +8,14 @@ services:
     environment:
       - PORT=8080
       - NODE_ENV=production
-      - KAGGLE_USERNAME=${KAGGLE_USERNAME}
-      - KAGGLE_KEY=${KAGGLE_KEY}
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-      - SESSION_SECRET=${SESSION_SECRET}
+      - APP_URL=${APP_URL:-}
+      # Optional — you can also configure everything in the app's Settings UI
+      - KAGGLE_USERNAME=${KAGGLE_USERNAME:-}
+      - KAGGLE_KEY=${KAGGLE_KEY:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - SESSION_SECRET=${SESSION_SECRET:-change-me-to-a-random-string}
+    volumes:
+      - app_data:/app/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/healthz"]
@@ -19,3 +23,6 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+
+volumes:
+  app_data:
