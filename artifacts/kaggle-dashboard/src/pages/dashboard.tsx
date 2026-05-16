@@ -1,6 +1,7 @@
 import { useKaggleNotebooks, useKaggleCreds } from "@/hooks/use-kaggle-client";
 import { useSetupTelegramBot } from "@workspace/api-client-react";
 import { NotebookCard } from "@/components/notebook-card";
+import { SettingsModal } from "@/components/settings-modal";
 import { SiKaggle } from "react-icons/si";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Bot, AlertTriangle, BookOpen, Sparkles, WifiOff } from "lucide-react";
@@ -38,6 +39,7 @@ export default function Dashboard() {
   });
 
   const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ["kaggle-creds"] });
     queryClient.invalidateQueries({ queryKey: ["kaggle-notebooks"] });
     refetch();
   };
@@ -90,6 +92,7 @@ export default function Dashboard() {
               <Bot className="w-3.5 h-3.5" />
               {setupBot.isPending ? "Setting up…" : "Setup Bot"}
             </button>
+            <SettingsModal onSaved={handleRefresh} />
           </div>
         </div>
       </header>
@@ -127,11 +130,13 @@ export default function Dashboard() {
             </div>
             <h3 className="font-bold text-base mb-1">Connection Failed</h3>
             <p className="text-sm text-muted-foreground mb-5 leading-relaxed">
-              Could not reach the Kaggle API. Check your credentials and try again.
+              Could not reach the Kaggle API. Check your credentials in Settings and try again.
             </p>
-            <Button onClick={handleRefresh} variant="outline" size="sm" disabled={isFetching}>
-              {isFetching ? <><RefreshCw className="w-3 h-3 mr-1.5 animate-spin" />Trying…</> : "Try Again"}
-            </Button>
+            <div className="flex gap-2 justify-center">
+              <Button onClick={handleRefresh} variant="outline" size="sm" disabled={isFetching}>
+                {isFetching ? <><RefreshCw className="w-3 h-3 mr-1.5 animate-spin" />Trying…</> : "Try Again"}
+              </Button>
+            </div>
           </div>
         )}
 
@@ -141,7 +146,7 @@ export default function Dashboard() {
               <BookOpen className="w-7 h-7 text-primary" />
             </div>
             <h3 className="font-bold text-base mb-1">No Notebooks Found</h3>
-            <p className="text-sm text-muted-foreground">Your Kaggle account has no notebooks yet.</p>
+            <p className="text-sm text-muted-foreground mb-4">Check your Kaggle username in Settings or create your first notebook on Kaggle.</p>
           </div>
         )}
 
