@@ -5,37 +5,39 @@ colorFrom: purple
 colorTo: indigo
 sdk: docker
 pinned: false
-app_port: 7860
+app_port: 8080
 ---
 
-# TG Bot to Kaggle — Hugging Face Spaces Deploy
+# Kaggle Notebook Dashboard — HuggingFace Spaces Deploy
 
-## 1-tap deploy to Hugging Face
+## Deploy in 3 steps
 
-### Option A: Deploy via HF web UI
+### Step 1 — Create a Space
 1. Go to [huggingface.co/new-space](https://huggingface.co/new-space)
-2. Choose **Docker** as the SDK
-3. Clone your GitHub repo into the Space:
-   ```
-   huggingface-cli repo create tg-bot-to-kaggle --type space --space_sdk docker
-   git remote add hf https://huggingface.co/spaces/YOUR_HF_USERNAME/tg-bot-to-kaggle
-   git push hf main
-   ```
-4. In your Space → **Settings → Variables and Secrets**, add:
-   - `KAGGLE_USERNAME`
-   - `KAGGLE_KEY`
-   - `TELEGRAM_BOT_TOKEN`
-   - `SESSION_SECRET`
-5. The Space will rebuild and go live automatically!
+2. Name it `tg-bot-to-kaggle`, choose **Docker** SDK
 
-### Option B: Deploy via CLI (one command)
+### Step 2 — Push the code
 ```bash
 pip install huggingface_hub
 python deploy/huggingface/hf_deploy.py
 ```
+The script will ask for your HF username and token, then push automatically.
+
+### Step 3 — Set secrets in HF Space settings
+Go to your Space → **Settings → Variables and Secrets**, add:
+
+| Secret | Value |
+|--------|-------|
+| `KAGGLE_USERNAME` | your kaggle username |
+| `KAGGLE_KEY` | your kaggle API key |
+| `TELEGRAM_BOT_TOKEN` | your bot token from @BotFather |
+
+> **Or skip the secrets** — just open the app after deploy and use the ⚙️ Settings button inside to configure everything without touching any files.
 
 ### After deploy
-Run this once to register the Telegram webhook:
+Once the Space shows **Running** (green dot), register your bot webhook once:
 ```bash
-curl -X POST https://YOUR_SPACE_URL/api/telegram/setup
+curl -X POST https://YOUR_HF_USERNAME-tg-bot-to-kaggle.hf.space/api/telegram/setup
 ```
+
+Then open Telegram, type `/start` to your bot, and tap **Open Dashboard**.
