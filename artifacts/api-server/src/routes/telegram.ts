@@ -1,16 +1,11 @@
 import { Router, type IRouter } from "express";
+import { getSettings } from "../settings-store";
 
 const router: IRouter = Router();
 
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const KAGGLE_USERNAME = process.env.KAGGLE_USERNAME;
-
-if (!TELEGRAM_BOT_TOKEN) {
-  throw new Error("TELEGRAM_BOT_TOKEN environment variable is required");
-}
-
 async function telegramFetch(method: string, body: Record<string, unknown> = {}) {
-  const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/${method}`, {
+  const { telegramBotToken } = getSettings();
+  const res = await fetch(`https://api.telegram.org/bot${telegramBotToken}/${method}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -21,13 +16,16 @@ async function telegramFetch(method: string, body: Record<string, unknown> = {})
 function getWebAppUrl(): string {
   const domains = process.env.REPLIT_DOMAINS ?? process.env.REPLIT_DEV_DOMAIN ?? "";
   const domain = domains.split(",")[0]?.trim() ?? "";
-  if (domain) {
-    return `https://${domain}/`;
-  }
-  return "https://kaggle-dashboard.replit.app/";
+  if (domain) return `https://${domain}/`;
+  return process.env.APP_URL ?? "https://your-app-url.com/";
 }
 
 router.post("/telegram/webhook", async (req, res) => {
+  const { telegramBotToken, kaggleUsername } = getSettings();
+  if (!telegramBotToken) {
+    return res.json({ ok: true });
+  }
+
   const update = req.body as Record<string, unknown>;
 
   try {
@@ -44,36 +42,26 @@ router.post("/telegram/webhook", async (req, res) => {
         const webAppUrl = getWebAppUrl();
         await telegramFetch("sendMessage", {
           chat_id: chatId,
-          text: `Hi ${firstName}! 👋\n\nWelcome to your Kaggle Notebook Dashboard. Click the button below to open your notebooks and run them with one tap.`,
+          text: `Hi ${firstName}! 👋\n\nWelcome to your Kaggle Notebook Dashboard. Tap the button below to open your notebooks and run them with one tap.`,
           reply_markup: {
-            inline_keyboard: [[
-              {
-                text: "📓 Open Notebook Dashboard",
-                web_app: { url: webAppUrl },
-              },
-            ]],
+            inline_keyboard: [[{ text: "📓 Open Notebook Dashboard", web_app: { url: webAppUrl } }]],
           },
         });
       } else if (text === "/help") {
         await telegramFetch("sendMessage", {
           chat_id: chatId,
-          text: `*Kaggle Notebook Dashboard Bot*\n\nCommands:\n/start — Open the dashboard\n/notebooks — List your notebooks\n/help — Show this help\n\nOr just tap the button to open the Mini App and run your notebooks with one click!`,
+          text: `*Kaggle Notebook Dashboard Bot*\n\nCommands:\n/start — Open the dashboard\n/notebooks — List your notebooks\n/help — Show this help`,
           parse_mode: "Markdown",
         });
       } else if (text === "/notebooks") {
-        const username = KAGGLE_USERNAME ?? "unknown";
+        const username = kaggleUsername || "not configured";
         const webAppUrl = getWebAppUrl();
         await telegramFetch("sendMessage", {
           chat_id: chatId,
           text: `Your Kaggle username: *${username}*\n\nOpen the dashboard to see and run your notebooks:`,
           parse_mode: "Markdown",
           reply_markup: {
-            inline_keyboard: [[
-              {
-                text: "📓 Open Dashboard",
-                web_app: { url: webAppUrl },
-              },
-            ]],
+            inline_keyboard: [[{ text: "📓 Open Dashboard", web_app: { url: getWebAppUrl() } }]],
           },
         });
       } else {
@@ -82,21 +70,14 @@ router.post("/telegram/webhook", async (req, res) => {
           chat_id: chatId,
           text: "Open your notebook dashboard below:",
           reply_markup: {
-            inline_keyboard: [[
-              {
-                text: "📓 Open Notebook Dashboard",
-                web_app: { url: webAppUrl },
-              },
-            ]],
+            inline_keyboard: [[{ text: "📓 Open Notebook Dashboard", web_app: { url: webAppUrl } }]],
           },
         });
       }
     }
 
     if (callbackQuery) {
-      await telegramFetch("answerCallbackQuery", {
-        callback_query_id: callbackQuery.id,
-      });
+      await telegramFetch("answerCallbackQuery", { callback_query_id: callbackQuery.id });
     }
 
     res.json({ ok: true });
@@ -107,6 +88,11 @@ router.post("/telegram/webhook", async (req, res) => {
 });
 
 router.post("/telegram/setup", async (req, res) => {
+  const { telegramBotToken } = getSettings();
+  if (!telegramBotToken) {
+    return res.status(400).json({ ok: false, description: "Telegram bot token not configured. Open Settings first." });
+  }
+
   const webAppUrl = getWebAppUrl();
   const webhookUrl = `${webAppUrl}api/telegram/webhook`;
 
@@ -124,13 +110,8 @@ router.post("/telegram/setup", async (req, res) => {
           { command: "help", description: "Show help" },
         ],
       });
-
       await telegramFetch("setChatMenuButton", {
-        menu_button: {
-          type: "web_app",
-          text: "📓 Notebooks",
-          web_app: { url: webAppUrl },
-        },
+        menu_button: { type: "web_app", text: "📓 Notebooks", web_app: { url: webAppUrl } },
       });
     }
 
