@@ -43,10 +43,13 @@ COPY --from=build-frontend /app/artifacts/kaggle-dashboard/dist/public ./artifac
 COPY --from=build-api /app/node_modules ./node_modules
 COPY --from=build-api /app/package.json ./package.json
 
-# Metadata
+# Persistent settings directory — mount a volume here in production
+RUN mkdir -p /app/data && chmod 777 /app/data
+
 EXPOSE 8080
 ENV PORT=8080
 ENV NODE_ENV=production
+ENV DATA_DIR=/app/data
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
   CMD wget -qO- http://localhost:8080/api/healthz || exit 1
