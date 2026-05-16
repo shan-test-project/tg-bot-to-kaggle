@@ -1,0 +1,255 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: kaggle
+    description: Kaggle notebook operations
+  - name: telegram
+    description: Telegram bot operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /kaggle/notebooks:
+    get:
+      operationId: listNotebooks
+      tags: [kaggle]
+      summary: List all Kaggle notebooks
+      description: Returns all notebooks for the authenticated Kaggle user
+      responses:
+        "200":
+          description: List of notebooks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  notebooks:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Notebook"
+                  cachedAt:
+                    type: string
+                    nullable: true
+                    description: ISO timestamp of when this data was last fetched from Kaggle
+                required:
+                  - notebooks
+        "500":
+          description: Error fetching notebooks
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /kaggle/notebooks/{ref}/run:
+    post:
+      operationId: runNotebook
+      tags: [kaggle]
+      summary: Trigger a Kaggle notebook run
+      description: Pushes a new kernel run for the specified notebook
+      parameters:
+        - name: ref
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "Notebook reference in format owner/slug"
+      responses:
+        "200":
+          description: Notebook run triggered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunResult"
+        "400":
+          description: Invalid notebook reference
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Error triggering run
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /kaggle/notebooks/{ref}/status:
+    get:
+      operationId: getNotebookStatus
+      tags: [kaggle]
+      summary: Get notebook run status
+      parameters:
+        - name: ref
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "Notebook reference in format owner/slug"
+      responses:
+        "200":
+          description: Notebook status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotebookStatus"
+        "500":
+          description: Error fetching status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /telegram/webhook:
+    post:
+      operationId: telegramWebhook
+      tags: [telegram]
+      summary: Telegram bot webhook
+      description: Receives updates from Telegram
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TelegramUpdate"
+      responses:
+        "200":
+          description: Update processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required:
+                  - ok
+
+  /telegram/setup:
+    post:
+      operationId: setupTelegramBot
+      tags: [telegram]
+      summary: Register the webhook URL with Telegram
+      responses:
+        "200":
+          description: Webhook set
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  description:
+                    type: string
+                required:
+                  - ok
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    Notebook:
+      type: object
+      properties:
+        ref:
+          type: string
+          description: "owner/slug identifier"
+        title:
+          type: string
+        slug:
+          type: string
+        owner:
+          type: string
+        lastRunTime:
+          type: string
+          nullable: true
+        totalVotes:
+          type: integer
+        language:
+          type: string
+        isPrivate:
+          type: boolean
+        url:
+          type: string
+      required:
+        - ref
+        - title
+        - slug
+        - owner
+        - totalVotes
+        - language
+        - isPrivate
+        - url
+
+    NotebookStatus:
+      type: object
+      properties:
+        ref:
+          type: string
+        status:
+          type: string
+          enum: [running, complete, error, queued, cancelAcknowledged]
+        lastRunTime:
+          type: string
+          nullable: true
+        totalVotes:
+          type: integer
+      required:
+        - ref
+        - status
+        - totalVotes
+
+    RunResult:
+      type: object
+      properties:
+        ref:
+          type: string
+        status:
+          type: string
+        message:
+          type: string
+      required:
+        - ref
+        - status
+        - message
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    TelegramUpdate:
+      type: object
+      additionalProperties: true
+      properties:
+        update_id:
+          type: integer
